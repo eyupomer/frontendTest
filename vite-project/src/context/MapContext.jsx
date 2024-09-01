@@ -18,7 +18,7 @@ export const MapProvider = ({ children }) => {
     const storedData = localStorage.getItem('parkData');
     return storedData ? JSON.parse(storedData) : { type: 'FeatureCollection', features: [] };
   });
-  const [showDetail,setShowDetail] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
   const [selectedPark, setSelectedPark] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -53,9 +53,12 @@ export const MapProvider = ({ children }) => {
               properties: { ...park },
             })),
           };
-
+          const localDatas = localStorage.getItem('parkData')
+          if (!localDatas) {
+            localStorage.setItem('parkData', JSON.stringify(initialGeojsonData))
+          }
           setGeojsonData(initialGeojsonData);
-          localStorage.setItem('parkData', JSON.stringify(initialGeojsonData));
+
         } catch (error) {
           console.error('Error fetching data:', error);
         }
@@ -65,11 +68,12 @@ export const MapProvider = ({ children }) => {
         radius: 40,
         maxZoom: 22,
       });
-      index.load(geojsonData.features);
+      console.log('datalar :', JSON.parse(localStorage.getItem('parkData')))
+      index.load(JSON.parse(localStorage.getItem('parkData')));
       console.log("Initialized!!")
       map.current.addSource('parks', {
         type: 'geojson',
-        data: geojsonData, 
+        data: geojsonData,
         cluster: true,
         clusterMaxZoom: 22,
         clusterRadius: 50,
@@ -132,26 +136,15 @@ export const MapProvider = ({ children }) => {
         const features = e.features[0];
         setSelectedPark(features.properties);
         setShowDetail(true);
-        
-              // Create a popup with editable fields
+
+        // Create a popup with editable fields
         const popup = new maptilersdk.Popup({ offset: 25, closeButton: true, closeOnClick: true })
           .setLngLat(features.geometry.coordinates)
           .setHTML(`
-            <div>
-              <h3><input type="text" id="edit-parkName" value="${features.properties.parkName}" /></h3>
-              <p><strong>Kapasite:</strong> <input type="number" id="edit-capacity" value="${features.properties.capacity}" /></p>
-              <p><strong>Boş Kapasite:</strong> <input type="number" id="edit-emptyCapacity" value="${features.properties.emptyCapacity}" /></p>
-              <p><strong>Durum:</strong> 
-                <select id="edit-isOpen">
-                  <option value="true" ${features.properties.isOpen ? 'selected' : ''}>Açık</option>
-                  <option value="false" ${!features.properties.isOpen ? 'selected' : ''}>Kapalı</option>
-                </select>
-              </p>
-              <button id="save-changes">Kaydet</button>
-            </div>
+            
           `)
           .addTo(map.current);
-        
+
 
         // Event listener for the "Save" button
         popup.getElement().querySelector('#save-changes').addEventListener('click', () => {
@@ -203,7 +196,11 @@ export const MapProvider = ({ children }) => {
 
   const updateGeojsonData = (newData) => {
     setGeojsonData(newData);
-    localStorage.setItem('parkData', JSON.stringify(newData));
+    const localDatas = localStorage.getItem('parkData')
+    console.log('local datas :', localDatas)
+    if (!localDatas) {
+      localStorage.setItem('parkData', JSON.stringify(newData));
+    }
   };
 
   const editParkData = (id, newProperties) => {
@@ -214,7 +211,7 @@ export const MapProvider = ({ children }) => {
   };
 
   return (
-    <MapContext.Provider value={{ mapContainer, geojsonData, setGeojsonData: updateGeojsonData, selectedPark, setSelectedPark, isEditing, setIsEditing,showDetail,setShowDetail }}>
+    <MapContext.Provider value={{ mapContainer, geojsonData, setGeojsonData: updateGeojsonData, selectedPark, setSelectedPark, isEditing, setIsEditing, showDetail, setShowDetail }}>
       {children}
     </MapContext.Provider>
   );

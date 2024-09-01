@@ -1,15 +1,16 @@
-import React, { useRef, useEffect, useState,useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as maptilersdk from '@maptiler/sdk';
 import "@maptiler/sdk/dist/maptiler-sdk.css";
 import './map.css';
 import Supercluster from 'supercluster';
 import { MapProvider, useMapContext } from '../context/MapContext';
-import {produce} from "immer";
+import { produce } from "immer";
 
 export default function Map() {
-  const { mapContainer, geojsonData, setGeojsonData, selectedPark, setSelectedPark, showDetail,setShowDetail} = useMapContext();
-  const [editMode,setEditMode] = useState(false);
-  const [capacity,setCapacity] = useState(0);
+  const { mapContainer, geojsonData, setGeojsonData, selectedPark, setSelectedPark, showDetail, setShowDetail } = useMapContext();
+  const [editMode, setEditMode] = useState(false);
+  const [capacity, setCapacity] = useState(0);
+  const [emptyCapacity, setEmptyCapacity] = useState(0);
   const editParkData = (parkID, newProperties) => {
     const updatedGeojsonData = produce(geojsonData, (draft) => {
       const feature = draft.features.find((feature) => feature.properties.parkID === parkID);
@@ -17,30 +18,46 @@ export default function Map() {
         Object.assign(feature.properties, newProperties);
       }
     });
-  
+
     setGeojsonData(updatedGeojsonData);
-  
+
     localStorage.setItem('parkData', JSON.stringify(updatedGeojsonData));
   };
 
   const updateParkData = (id) => {
-   setEditMode(!editMode);
-  
+    if (editMode) {
+      const parkData = JSON.parse(localStorage.getItem('parkData'));
+      const features = parkData.features;
+      const selectedData = features.find(item => item.properties.parkID === id);
+      if (selectedData) {
+        console.log(selectedData);
+        selectedData.properties.capacity = capacity;
+        selectedData.properties.emptyCapacity = emptyCapacity;
+        localStorage.setItem('parkData', JSON.stringify({...parkData, selectedData}));
+        setEditMode(false);
+      } else {
+        console.error('Item with the specified parkID not found.');
+      }
+    } else {
+      setEditMode(true)
+    }
+
+
   }
 
   return (
     <div className='mapContainer'>
-     {
-      // showDetail && ( <div className='mapDetailModal'>
-      //   <h2>{selectedPark.parkName}</h2>
-      //   <p>Kapasite:{editMode === true ? <><input value={capacity} onChange={e=>setCapacity(e.target.value)} type="text" /></>:selectedPark.capacity}</p>
-      //   <p>Boş Kapasite:{selectedPark.freeTime}</p>
-      //   <p>Durum:{selectedPark.isOpen === 1 ? "Açık" : "Kapalı"}</p>
-      //   <button onClick={() => updateParkData(selectedPark.parkID)}>Düzenle</button>
-      //   <button onClick={() => setShowDetail(!showDetail)}>Close</button>
-      // </div>)
-     }
-        <div ref={mapContainer} className="map"> </div>
+      {
+        showDetail && (<div className='mapDetailModal'>
+          <h2>{selectedPark.parkName}</h2>
+          <p>Kapasite:{editMode === true ? <><input value={capacity} onChange={e => setCapacity(e.target.value)} type="text" /></> : selectedPark.capacity}</p>
+          <p>Boş Kapasite:{editMode === true ? <><input value={emptyCapacity} onChange={e => setEmptyCapacity(e.target.value)} type="text" /></> : selectedPark.freeTime}</p>
+          <p>Durum:{selectedPark.isOpen === 1 ? "Açık" : "Kapalı"}</p>
+          <button onClick={() => updateParkData(selectedPark.parkID)}>Düzenle</button>
+          <button onClick={() => setShowDetail(!showDetail)}>Close</button>
+        </div>)
+      }
+      <div ref={mapContainer} className="map"> </div>
     </div>
   );
 }
